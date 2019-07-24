@@ -198,7 +198,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   unit                = "Percent"
 
   actions_enabled = true
-  alarm_actions = ["${aws_autoscaling_policy.example-cpu-policy.arm}"]
+  alarm_actions = ["${aws_autoscaling_policy.example-cpu-policy.arn}"]
 
 }
 
