@@ -160,6 +160,16 @@ data "terraform_remote_state" "elb" {
   }
 }
 
+# scale up
+resource "aws_autoscaling_policy" "example-cpu-policy" {
+  name = "example-cpu-policy"
+  autoscaling_group_name = "${aws_autoscaling_group.example.name}"
+  adjustment_type = "ChangeInCapacity"
+  scaling_adjustment = "1"
+  cooldown = "300"
+  policy_type = "SimpleScaling"
+}
+
 resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   alarm_name  = "${var.cluster_name}-high-cpu-utilization"
   namespace   = "AWS/EC2"
@@ -173,25 +183,43 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   evaluation_periods  = 1
   period              = 300
   statistic           = "Average"
-  threshold           = 90
+  threshold           = 50
   unit                = "Percent"
+
+  actions_enabled = true
+  alarm_actions = ["${aws_autoscaling_policy.example-cpu-policy.arn}"]
+
 }
 
-resource "aws_cloudwatch_metric_alarm" "low_cpu_credit_balance" {
-  count = "${format("%.1s", var.instance_type) == "t" ? 1 : 0}"
+# scale down
+resource "aws_autoscaling_policy" "example-cpu-policy-scaledown" {
+  name = "example-cpu-policy-scaledown"
+  autoscaling_group_name = "${aws_autoscaling_group.example.name}"
+  adjustment_type = "ChangeInCapacity"
+  scaling_adjustment = "-1"
+  cooldown = "300"
+  policy_type = "SimpleScaling"
+}
 
-  alarm_name  = "${var.cluster_name}-low-cpu-credit-balance"
+resource "aws_cloudwatch_metric_alarm" "low_cpu_utilization" {
+  alarm_name  = "${var.cluster_name}-low-cpu-utilization"
   namespace   = "AWS/EC2"
-  metric_name = "CPUCreditBalance"
+  metric_name = "CPUUtilization"
 
   dimensions = {
     AutoScalingGroupName = "${aws_autoscaling_group.example.name}"
   }
 
-  comparison_operator = "LessThanThreshold"
+  comparison_operator = "LessThanOrEqualToThreshold"
   evaluation_periods  = 1
-  period              = 300
-  statistic           = "Minimum"
-  threshold           = 10
-  unit                = "Count"
+  period              = 120
+  statistic           = "Average"
+  threshold           = 5
+  unit                = "Percent"
+
+  actions_enabled = true
+  alarm_actions = ["${aws_autoscaling_policy.example-cpu-policy-scaledown.arn}"]
+
 }
+
+
