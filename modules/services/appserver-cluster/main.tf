@@ -171,6 +171,16 @@ data "terraform_remote_state" "db" {
   }
 }
 
+# scale up
+resource "aws_autoscaling_policy" "example-cpu-policy" {
+  name = "example-cpu-policy"
+  autoscaling_group_name = "${aws_autoscaling_group.example.name}"
+  adjustment_type = "ChangeInCapacity"
+  scaling_adjustment = "1"
+  cooldown = "300"
+  policy_type = "SimpleScaling"
+}
+
 resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   alarm_name  = "${var.cluster_name}-high-cpu-utilization"
   namespace   = "AWS/EC2"
@@ -186,6 +196,10 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
   statistic           = "Average"
   threshold           = 90
   unit                = "Percent"
+
+  actions_enabled = true
+  alarm_actions = ["${aws_autoscaling_policy.example-cpu-policy.arm}"]
+
 }
 
 resource "aws_cloudwatch_metric_alarm" "low_cpu_credit_balance" {
